@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#172554">
+<title>Snooze — 延期予約</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f3f5f9;
+  --panel: #ffffff;
+  --ink: #172033;
+  --muted: #64748b;
+  --line: #dce3ee;
+  --accent: #244b86;
+  --accent-dark: #193967;
+  --soft: #edf3fb;
+  --success: #176b4b;
+  --danger: #a33a3a;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); }
+main { width: min(680px, calc(100% - 28px)); margin: 34px auto 60px; }
+header { margin-bottom: 22px; }
+.eyebrow { color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: .12em; }
+h1 { margin: 5px 0 6px; font-size: clamp(30px, 7vw, 40px); letter-spacing: -.04em; }
+.subtitle { color: var(--muted); margin: 0; line-height: 1.6; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px; margin-top: 16px; box-shadow: 0 5px 18px rgba(23,32,51,.035); }
+h2 { font-size: 18px; margin: 0 0 17px; }
+label { display: block; font-weight: 700; font-size: 14px; margin: 16px 0 8px; }
+input, textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 11px; background: white; color: var(--ink); padding: 13px 14px; font: inherit; font-size: 16px; outline: none; }
+input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(36,75,134,.12); }
+textarea { min-height: 82px; resize: vertical; }
+.times { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+.timebox { background: var(--soft); border-radius: 13px; padding: 15px; min-width: 0; }
+.timebox .kicker { font-size: 12px; color: var(--muted); font-weight: 700; }
+.timebox .time { font-size: clamp(25px, 6vw, 34px); font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 4px; }
+.timebox .desc { color: var(--muted); font-size: 12px; margin-top: 3px; }
+.note { color: var(--muted); font-size: 13px; line-height: 1.65; margin: 14px 0 0; }
+button { border: 0; border-radius: 11px; padding: 13px 17px; font: inherit; font-weight: 750; cursor: pointer; }
+.primary { width: 100%; margin-top: 19px; color: white; background: var(--accent); }
+.primary:hover { background: var(--accent-dark); }
+.secondary { background: var(--soft); color: var(--accent); }
+.danger { color: var(--danger); background: #fff1f1; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.confirm { display: none; border: 1px solid #b8d9ca; background: #f0faf5; }
+.confirm h2 { color: var(--success); margin-bottom: 8px; }
+.confirm p { line-height: 1.6; margin: 7px 0; }
+.confirm-times { font-weight: 800; font-variant-numeric: tabular-nums; }
+.next-step {
+  margin-top: 18px;
+  padding: 20px 16px;
+  border: 2px solid var(--accent);
+  border-radius: 15px;
+  background: #eaf1fb;
+  text-align: center;
+}
+.next-step .next-label {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: .08em;
+}
+.next-step .next-title {
+  margin-top: 5px;
+  color: var(--accent-dark);
+  font-size: clamp(22px, 5vw, 29px);
+  font-weight: 900;
+  line-height: 1.3;
+}
+.next-step .next-description {
+  margin-top: 7px;
+  color: #405675;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.history-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.history-head h2 { margin: 0; }
+.history-list { display: grid; gap: 10px; margin-top: 16px; }
+.entry { border: 1px solid var(--line); border-radius: 13px; padding: 14px; }
+.entry-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.entry-title { font-weight: 800; overflow-wrap: anywhere; }
+.entry-date { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.entry-times { color: var(--muted); font-size: 13px; margin-top: 9px; line-height: 1.7; }
+.empty { color: var(--muted); text-align: center; padding: 25px 10px; font-size: 14px; }
+footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 22px; line-height: 1.6; }
+@media (max-width: 440px) {
+  .card { padding: 18px; }
+  .times { gap: 8px; }
+  .timebox { padding: 12px; }
+  .entry-top { display: block; }
+  .entry-date { margin-top: 4px; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">PERSONAL ROUTINE TOOL</div>
+    <h1>Snooze</h1>
+    <p class="subtitle">延期する行動と終了時刻を決め、勉強再開までの予定を予約する。</p>
+  </header>
+
+  <section class="card" aria-labelledby="form-title">
+    <h2 id="form-title">延期を予約する</h2>
+    <form id="snooze-form">
+      <label for="activity">延期中に何をする？</label>
+      <textarea id="activity" maxlength="240" placeholder="例：見ている動画を最後まで見る" required></textarea>
+
+      <label for="end-time">それはいつ終わる？</label>
+      <input id="end-time" type="datetime-local" required>
+
+      <div class="times" aria-live="polite">
+        <div class="timebox">
+          <div class="kicker">延期行動の終了</div>
+          <div class="time" id="end-preview">--:--</div>
+          <div class="desc" id="end-date-preview">終了アラームを設定する時刻</div>
+        </div>
+        <div class="timebox">
+          <div class="kicker">勉強を始める</div>
+          <div class="time" id="start-preview">--:--</div>
+          <div class="desc">終了時刻の5分後</div>
+        </div>
+      </div>
+      <p class="note">このアプリはアラームを鳴らしません。予約確定後に表示される2つの時刻を、スマートフォンなどのアラームに自分で設定してください。</p>
+      <button class="primary" type="submit">延期を確定する</button>
+    </form>
+  </section>
+
+  <section class="card confirm" id="confirmation" aria-live="polite">
+    <h2>延期を予約しました</h2>
+    <p>次の2つの時刻を、外部のアラームに設定してください。</p>
+    <p>① 延期行動を終えてスマホを置く：<span class="confirm-times" id="confirm-end"></span></p>
+    <p>② 勉強を始める：<span class="confirm-times" id="confirm-start"></span></p>
+    <div class="next-step">
+      <div class="next-label">NEXT STEP</div>
+      <div class="next-title">延期後チェックリストに従う</div>
+      <div class="next-description">勉強開始アラームが鳴ったら、この手順に進んでください。</div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="history-title">
+    <div class="history-head">
+      <h2 id="history-title">延期履歴</h2>
+      <button class="secondary danger" id="clear-history" type="button">履歴を消去</button>
+    </div>
+    <div class="history-list" id="history-list">
+      <div class="empty">まだ延期の記録はありません。</div>
+    </div>
+  </section>
+  <footer>履歴はこのブラウザ内に保存されます。ブラウザのデータを消去すると履歴も失われます。</footer>
+</main>
+
+<script>
+(() => {
+  const STORAGE_KEY = "snooze-reservations-v1";
+  const $ = (id) => document.getElementById(id);
+  const form = $("snooze-form");
+  const activity = $("activity");
+  const endInput = $("end-time");
+  const historyList = $("history-list");
+  let records = loadRecords();
+
+  function loadRecords() {
+    try {
+      const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      return Array.isArray(value) ? value : [];
+    } catch (_) { return []; }
+  }
+  function saveRecords() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  }
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function parseLocal(value) {
+    if (!value) return null;
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  function plusMinutes(date, minutes) {
+    return new Date(date.getTime() + minutes * 60000);
+  }
+  function dateText(date) {
+    return `${date.getFullYear()}/${pad(date.getMonth()+1)}/${pad(date.getDate())}`;
+  }
+  function timeText(date) {
+    return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }
+  function dateTimeText(date) {
+    return `${dateText(date)} ${timeText(date)}`;
+  }
+  function refreshPreview() {
+    const end = parseLocal(endInput.value);
+    if (!end) {
+      $("end-preview").textContent = "--:--";
+      $("start-preview").textContent = "--:--";
+      $("end-date-preview").textContent = "終了アラームを設定する時刻";
+      return;
+    }
+    const start = plusMinutes(end, 5);
+    $("end-preview").textContent = timeText(end);
+    $("start-preview").textContent = timeText(start);
+    $("end-date-preview").textContent = dateText(end);
+  }
+  function setDefaultEndTime() {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 10);
+    now.setSeconds(0, 0);
+    const local = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    endInput.value = local;
+    endInput.min = (() => {
+      const n = new Date();
+      return `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}T${pad(n.getHours())}:${pad(n.getMinutes())}`;
+    })();
+    refreshPreview();
+  }
+  function renderHistory() {
+    historyList.replaceChildren();
+    if (!records.length) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "まだ延期の記録はありません。";
+      historyList.append(empty);
+      return;
+    }
+    [...records].reverse().forEach((record) => {
+      const item = document.createElement("article");
+      item.className = "entry";
+      const top = document.createElement("div");
+      top.className = "entry-top";
+      const title = document.createElement("div");
+      title.className = "entry-title";
+      title.textContent = record.activity;
+      const registered = document.createElement("div");
+      registered.className = "entry-date";
+      registered.textContent = `予約：${dateTimeText(new Date(record.createdAt))}`;
+      top.append(title, registered);
+
+      const times = document.createElement("div");
+      times.className = "entry-times";
+      const endTime = document.createElement("div");
+      endTime.textContent = `延期終了：${dateTimeText(new Date(record.endAt))}`;
+      const startTime = document.createElement("div");
+      startTime.textContent = `勉強開始：${dateTimeText(new Date(record.startAt))}`;
+      times.append(endTime, startTime);
+      item.append(top, times);
+      historyList.append(item);
+    });
+  }
+
+  endInput.addEventListener("input", refreshPreview);
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const text = activity.value.trim();
+    const end = parseLocal(endInput.value);
+    if (!text || !end) return;
+    if (end.getTime() <= Date.now()) {
+      alert("終了時刻は現在より後に設定してください。");
+      return;
+    }
+    const start = plusMinutes(end, 5);
+    const record = {
+      id: (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`),
+      activity: text,
+      endAt: end.toISOString(),
+      startAt: start.toISOString(),
+      createdAt: new Date().toISOString()
+    };
+    records.push(record);
+    saveRecords();
+    renderHistory();
+
+    $("confirm-end").textContent = dateTimeText(end);
+    $("confirm-start").textContent = dateTimeText(start);
+    $("confirmation").style.display = "block";
+    $("confirmation").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    activity.value = "";
+    setDefaultEndTime();
+  });
+
+  $("clear-history").addEventListener("click", () => {
+    if (!records.length) return;
+    if (!confirm("延期履歴をすべて消去しますか？")) return;
+    records = [];
+    saveRecords();
+    renderHistory();
+  });
+
+  renderHistory();
+  setDefaultEndTime();
+})();
+</script>
+</body>
+</html>
